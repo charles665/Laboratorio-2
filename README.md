@@ -60,12 +60,38 @@ A star schema was chosen because the declared grain of `fact_sales` (one row per
 | Gross Profit | Profit left by each product/transaction | `Net Sales − Total Cost` |
 
 ## 7. Load Order and Surrogate-Key Strategy
-
+| Table | Surrogate Key | Natural Key | Generation Strategy |
+|---|---|---|---|
+| `dim_channels` | `channel_key` | `channel_id` | Auto-incremented integer PK, assigned automatically on insert |
+| `dim_stores` | `store_key` | `store_id` | Auto-incremented integer PK |
+| `dim_products` | `product_key` | `product_id` | Auto-incremented integer PK |
+| `dim_promotions` | `promotion_key` | `promotion_id` | Auto-incremented integer PK |
+| `dim_dates` | `date_id` | — | **Derived key**: built directly from the transaction date as `YYYYMMDD` (e.g. `2024-03-15 → 20240315`) instead of an auto-increment value, so it stays human-readable and directly derivable from `sale_date` |
+| `fact_sales` | — (no own surrogate key) | `sale_line_id` | References all dimension surrogate keys (`store_key`, `channel_key`, `product_key`, `promotion_key`, `date_id`) as foreign keys |
+ 
+### Dimension Load Process
+ 
+Each `load_*` function reads its slice of `reference_data.json` (or, for dates, the unique dates parsed from `sales_transactions.csv`) and inserts it into its dimension table with `executemany`, letting the database auto-assign the surrogate key on insert. `dim_dates` is the only exception: instead of an auto-increment key, its `date_id` is deterministically derived from each unique `sale_date` (`YYYYMMDD`), together with the corresponding `year`, `month`, and `day` attributes.
+ 
+### Fact Load Process
+ 
+`load_fact_sales()` builds `fact_sales` from the raw sales transactions in three steps:
+ 
+1. **Resolve surrogate keys:** the natural business identifiers from the source data (`store_id`, `channel_id`, `product_id`, `promotion_id`) are resolved to their dimension surrogate keys via `merge` (left join) against the dimension tables already loaded in the database. The transaction date is converted to `date_id` using the same `YYYYMMDD` format as `dim_dates`.
+2. **Validate referential integrity:** after the merges, any row whose surrogate key(s) came back as `NaN` is treated as an orphan (no matching dimension record). The load process explicitly checks for this and raises a `ValueError` listing the offending `sale_line_id`s, stopping the load rather than inserting incomplete/unlinked rows.
+3. **Calculate measures:** `gross_sales`, `net_sales`, `discount_amount`, `total_cost`, and `gross_profit` are computed from `quantity`, `list_price`, `unit_price_sale`, and `unit_cost` (brought in from `dim_products` during the merge).
+Once keys are resolved and measures are calculated, the final rows (`sale_line_id`, `date_id`, `store_key`, `channel_key`, `product_key`, `promotion_key`, `quantity`, and the five calculated measures) are inserted into `fact_sales` in a single batch operation (`executemany`) for performance.
+ 
 
 
 ## 8. Execution Instructions
 
-
+Once the environment and dependencies are set up, the full pipeline (dimensions → fact table → downstream steps) is executed with a single command from the project root:
+ 
+```bash
+python src/main.py
+```
+ 
 
 ## 9. SQL Queries / KPIs Mapped to Business Requirements
 
@@ -79,3 +105,10 @@ A star schema was chosen because the declared grain of `fact_sales` (one row per
 
 ## 10. Two Analytical Visualizations and Interpretation
 
+Las tendencias de ventas muestran que hubo un aumento constante dentro de los meses de febrero a mayo y hubo una caida en Junio 
+
+![Tendencias Mensuales](./docs/viz1_tendencia_ventas_mensuales.png)
+
+Las categorías que más venden son los computadores, la marca Pulse es la más representativa, seguida de Orion. La categoría que menos vende es Smart Home, la marca Vertex tiene menso desempeño en ventas. 
+
+![Ventas por Categoría](./docs/viz2_ventas_categoria_marca.png)
