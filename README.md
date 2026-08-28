@@ -78,12 +78,14 @@ A star schema was chosen because the declared grain of `fact_sales` (one row per
 | R5 | What is the gross margin by category, store, and month? | DimProducts, DimStore, DimDate | Net Sales, Total Cost, Gross Profit | Profit margin (%) |
 
 ## 10. Two Analytical Visualizations and Interpretation
-Como complemento al desarrollo del proyecto, se implementó un dashboard interactivo en Power BI con el propósito de facilitar la visualización y el análisis de los datos procesados durante el proyecto.
+As a complement to the project development, an interactive dashboard was implemented in Power BI to facilitate the visualization and analysis of the data processed throughout the project.
 
-Para su construcción se organizó la información mediante un modelo dimensional basado en un esquema estrella, compuesto por una tabla de hechos fact_sales y las dimensiones dim_dates, dim_stores, dim_products, dim_channel y dim_promotions. Se establecieron las relaciones correspondientes entre las dimensiones y la tabla de hechos, permitiendo analizar las ventas desde diferentes perspectivas.
+For its development, the information was organized using a dimensional model based on a star schema, consisting of a fact table, fact_sales, and the dimensions dim_dates, dim_stores, dim_products, dim_channel, and dim_promotions. The corresponding relationships between the dimensions and the fact table were established, allowing sales to be analyzed from different perspectives.
+
 <img width="1062" height="727" alt="image" src="https://github.com/user-attachments/assets/4eb1091b-a845-4bca-be3b-59b45f9c45cf" />
 
-El dashboard presenta indicadores y visualizaciones relacionadas con ventas netas, ventas brutas, descuentos, unidades vendidas, costos y ganancias, además de permitir analizar el comportamiento de las ventas por fecha, tienda, ciudad, producto, categoría, canal y promoción.
+The dashboard presents key indicators and visualizations related to net sales, gross sales, discounts, units sold, costs, and gross profit. It also allows users to analyze sales performance by date, store, city, product, category, channel, and promotion.
+
 <img width="1197" height="730" alt="image" src="https://github.com/user-attachments/assets/5e0692c4-1589-457c-be65-3a8ff6969ff8" />
 
-Esta implementación se desarrolló como un adicional al proyecto, con el objetivo de transformar los datos procesados en información visual e interactiva que facilite la interpretación de los resultados y el análisis de los principales indicadores del negocio.
+This implementation was developed as an additional component of the project, with the purpose of transforming the processed data into visual and interactive information that facilitates the interpretation of results and the analysis of key business indicators.
