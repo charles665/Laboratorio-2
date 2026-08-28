@@ -1,88 +1,100 @@
-#Tarea: acomodar la carga de las dimensiones con base a nueestros datos de referencia, para que se pueda cargar el datamart sin errores.
-
 import sqlite3
-from datetime import datetime, timedelta
+import sys
+from pathlib import Path
+import pandas as pd
 
-def load_channels(conn):
-    channels = [
-        (1, 'Tienda Física'),
-        (2, 'Tienda Online')
-    ]
-    conn.executemany("INSERT INTO dim_channels VALUES (?, ?)", channels)
 
-def load_stores(conn):
-    stores = [
-        (101, 'Tienda Alpha - Centro', 'Bogotá', 'Andina', 1),
-        (102, 'Tienda Beta - Norte', 'Medellín', 'Antioquia', 1),
-        (103, 'Tienda Nacional Online', 'E-Commerce', 'Nacional', 2)
-    ]
-    conn.executemany("INSERT INTO dim_stores VALUES (?, ?, ?, ?, ?)", stores)
+sys.path.append(str(Path(__file__).parent))
+from etl.extract import extract_from_csv, extract_from_json # Reutilizar funciones de extract.py
 
-def load_dates(conn, start_date_str="2026-01-01", end_date_str="2026-06-30"):
-    """Genera la dimensión de tiempo contigua para 6 meses."""
-    start_date = datetime.strptime(start_date_str, "%Y-%m-%d")
-    end_date = datetime.strptime(end_date_str, "%Y-%m-%d")
+DB_PATH = "database/retail_dw.db" # Ruta de la base de datos
+JSON_PATH = "data/reference_data.json" # Ruta del archivo JSON de referencia
+CSV_PATH = "data/sales_transactions.csv" # Ruta del archivo CSV de transacciones de ventas
+
+
+def load_channels(conn, channels_df): # Carga dim_channels
     
-    curr = start_date
-    dates_data = []
+    records = list(channels_df[["channel_id", "channel_name"]].itertuples(index=False, name=None)) 
+    conn.executemany(
+        "INSERT INTO dim_channels (channel_id, channel_name) VALUES (?, ?)", 
+        records, 
+    )
+
+
+def load_stores(conn, stores_df): # Carga dim_stores
     
-    # Nombres de meses y días en español
-    months_es = {1: 'Enero', 2: 'Febrero', 3: 'Marzo', 4: 'Abril', 5: 'Mayo', 6: 'Junio'}
-    days_es = {'Monday': 'Lunes', 'Tuesday': 'Martes', 'Wednesday': 'Miércoles', 
-               'Thursday': 'Jueves', 'Friday': 'Viernes', 'Saturday': 'Sábado', 'Sunday': 'Domingo'}
+    records = list(
+        stores_df[["store_id", "store_name", "city", "region"]].itertuples(index=False, name=None)
+    )
+    conn.executemany(
+        "INSERT INTO dim_stores (store_id, store_name, city, region) VALUES (?, ?, ?, ?)",
+        records,
+    )
+
+
+def load_products(conn, products_df): # Carga dim_products con precios de lista y costo, necesarios para las medidas del fact.
     
-    while curr <= end_date:
-        date_id = int(curr.strftime("%Y%m%d"))
-        day_name = days_es.get(curr.strftime("%A"), curr.strftime("%A"))
-        month_name = months_es.get(curr.month, curr.strftime("%B"))
-        quarter = (curr.month - 1) // 3 + 1
-        
-        dates_data.append((
-            date_id,
-            curr.strftime("%Y-%m-%d"),
-            curr.year,
-            curr.month,
-            month_name,
-            curr.day,
-            day_name,
-            quarter
-        ))
-        curr += timedelta(days=1)
-        
-    conn.executemany("INSERT INTO dim_dates VALUES (?, ?, ?, ?, ?, ?, ?, ?)", dates_data)
+    records = list( 
+        products_df[ 
+            ["product_id", "product_name", "category", "brand", "list_price", "unit_cost"]
+        ].itertuples(index=False, name=None)
+    )
+    conn.executemany( 
+        """INSERT INTO dim_products
+           (product_id, product_name, category, brand, list_price, unit_cost)
+           VALUES (?, ?, ?, ?, ?, ?)""",
+        records,
+    )
 
-def load_products(conn):
-    products = [
-        (1, 'Laptop Pro 15', 'Electrónica', 'TechBrand', 1200.00, 800.00),
-        (2, 'Smartphone X', 'Electrónica', 'MobileCorp', 800.00, 500.00),
-        (3, 'Audífonos Inalámbricos', 'Audio', 'SoundMaster', 150.00, 70.00),
-        (4, 'Monitor Inteligente 27"', 'Electrónica', 'VisionTech', 350.00, 220.00),
-        (5, 'Teclado Ergonómico', 'Accesorios', 'KeyPro', 80.00, 40.00)
-    ]
-    conn.executemany("INSERT INTO dim_products VALUES (?, ?, ?, ?, ?, ?)", products)
 
-def load_promotions(conn):
-    promotions = [
-        (0, 'Sin Promoción', 0.00),
-        (1, 'Descuento Año Nuevo', 0.15),
-        (2, 'Liquidación Primavera', 0.20),
-        (3, 'Cyber Flash Discount', 0.25)
-    ]
-    conn.executemany("INSERT INTO dim_promotions VALUES (?, ?, ?)", promotions)
+def load_promotions(conn, promotions_df): # Carga dim_promotions con porcentaje de descuento, necesario para las medidas del fact.
+    
+    records = list(
+        promotions_df[["promotion_id", "promotion_name", "discount_pct"]].itertuples(
+            index=False, name=None
+        )
+    )
+    conn.executemany(
+        "INSERT INTO dim_promotions (promotion_id, promotion_name, discount_pct) VALUES (?, ?, ?)",
+        records,
+    )
 
-def load_all_dimensions(db_path="sales_datamart.db"):
+
+def load_dates(conn, sales_df): # Carga dim_dates a partir de las fechas reales que aparecen en sale_date, en vez de un rango fijo.
+
+    unique_dates = pd.to_datetime(sales_df["sale_date"]).dt.normalize().unique() # Obtiene las fechas únicas y normalizadas
+    unique_dates = sorted(unique_dates) # Ordena las fechas para consistencia en la carga
+
+    records = []
+    for date in unique_dates: # Convierte cada fecha a un formato YYYYMMDD y extrae año, mes y día para la tabla dim_dates
+        ts = pd.Timestamp(date)
+        date_id = int(ts.strftime("%Y%m%d"))
+        records.append((date_id, ts.year, ts.month, ts.day))
+
+    conn.executemany( # Inserta los registros en dim_dates
+        "INSERT INTO dim_dates (date_id, year, month, day) VALUES (?, ?, ?, ?)",
+        records,
+    )
+
+
+def load_all_dimensions(db_path=DB_PATH, json_path=JSON_PATH, csv_path=CSV_PATH): # Carga todas las dimensiones desde el JSON de referencia y el CSV de transacciones de ventas.
+    references = extract_from_json(json_path)
+    sales_files = extract_from_csv(csv_path)
+    sales_df = next(iter(sales_files.values()))
+
     conn = sqlite3.connect(db_path)
     conn.execute("PRAGMA foreign_keys = ON;")
-    
-    load_channels(conn)
-    load_stores(conn)
-    load_dates(conn)
-    load_products(conn)
-    load_promotions(conn)
-    
+
+    load_channels(conn, references["channels"])
+    load_stores(conn, references["stores"])
+    load_products(conn, references["products"])
+    load_promotions(conn, references["promotions"])
+    load_dates(conn, sales_df)
+
     conn.commit()
     conn.close()
-    print("[SUCCESS] Todas las tablas de dimensión han sido cargadas exitosamente.")
+    print("[SUCCESS] Todas las tablas de dimension han sido cargadas exitosamente.")
+
 
 if __name__ == "__main__":
     load_all_dimensions()
