@@ -78,4 +78,12 @@ A star schema was chosen because the declared grain of `fact_sales` (one row per
 | R5 | What is the gross margin by category, store, and month? | DimProducts, DimStore, DimDate | Net Sales, Total Cost, Gross Profit | Profit margin (%) |
 
 ## 10. Two Analytical Visualizations and Interpretation
+Como complemento al desarrollo del proyecto, se implementó un dashboard interactivo en Power BI con el propósito de facilitar la visualización y el análisis de los datos procesados durante el proyecto.
 
+Para su construcción se organizó la información mediante un modelo dimensional basado en un esquema estrella, compuesto por una tabla de hechos fact_sales y las dimensiones dim_dates, dim_stores, dim_products, dim_channel y dim_promotions. Se establecieron las relaciones correspondientes entre las dimensiones y la tabla de hechos, permitiendo analizar las ventas desde diferentes perspectivas.
+<img width="1062" height="727" alt="image" src="https://github.com/user-attachments/assets/4eb1091b-a845-4bca-be3b-59b45f9c45cf" />
+
+El dashboard presenta indicadores y visualizaciones relacionadas con ventas netas, ventas brutas, descuentos, unidades vendidas, costos y ganancias, además de permitir analizar el comportamiento de las ventas por fecha, tienda, ciudad, producto, categoría, canal y promoción.
+<img width="1197" height="730" alt="image" src="https://github.com/user-attachments/assets/5e0692c4-1589-457c-be65-3a8ff6969ff8" />
+
+Esta implementación se desarrolló como un adicional al proyecto, con el objetivo de transformar los datos procesados en información visual e interactiva que facilite la interpretación de los resultados y el análisis de los principales indicadores del negocio.
