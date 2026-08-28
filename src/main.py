@@ -1,89 +1,38 @@
-import os
-import json
 from create_schema import create_schema
-from load_dimension import load_all_dimensions
-from load_facts import load_fact_sales
+from load_dimensions import load_all_dimensions
+from load_fact import load_fact_sales
 from queries import run_queries
+from visualizations import generate_visualizations
 
-def ensure_reference_file(json_path="reference_data.json"):
-    """
-    Verifica la existencia del JSON de referencia.
-    Si no existe, crea el archivo con la estructura exacta especificada.
-    """
-    if not os.path.exists(json_path):
-        reference_data = {
-          "products": [
-            {"product_id": "P001", "product_name": "NovaBook Air", "category": "Computers", "brand": "NovaTech", "list_price": 2600000, "unit_cost": 2050000},
-            {"product_id": "P002", "product_name": "NovaBook Pro", "category": "Computers", "brand": "NovaTech", "list_price": 3800000, "unit_cost": 3020000},
-            {"product_id": "P003", "product_name": "Orion Workstation", "category": "Computers", "brand": "Orion", "list_price": 4200000, "unit_cost": 3500000},
-            {"product_id": "P004", "product_name": "Vertex Mini PC", "category": "Computers", "brand": "Vertex", "list_price": 1900000, "unit_cost": 1500000},
-            {"product_id": "P005", "product_name": "PulseBook 14", "category": "Computers", "brand": "Pulse", "list_price": 2300000, "unit_cost": 1810000},
-            {"product_id": "P006", "product_name": "NovaPhone X", "category": "Mobile Devices", "brand": "NovaTech", "list_price": 1800000, "unit_cost": 1380000},
-            {"product_id": "P007", "product_name": "Orion Phone S", "category": "Mobile Devices", "brand": "Orion", "list_price": 1350000, "unit_cost": 980000},
-            {"product_id": "P008", "product_name": "Vertex Phone Lite", "category": "Mobile Devices", "brand": "Vertex", "list_price": 980000, "unit_cost": 710000},
-            {"product_id": "P009", "product_name": "Pulse Phone Max", "category": "Mobile Devices", "brand": "Pulse", "list_price": 1550000, "unit_cost": 1160000},
-            {"product_id": "P010", "product_name": "NovaTab 11", "category": "Mobile Devices", "brand": "NovaTech", "list_price": 1450000, "unit_cost": 1080000},
-            {"product_id": "P011", "product_name": "Wireless Mouse", "category": "Accessories", "brand": "NovaTech", "list_price": 120000, "unit_cost": 48000},
-            {"product_id": "P012", "product_name": "Mechanical Keyboard", "category": "Accessories", "brand": "Orion", "list_price": 280000, "unit_cost": 122000},
-            {"product_id": "P013", "product_name": "USB-C Hub", "category": "Accessories", "brand": "Vertex", "list_price": 190000, "unit_cost": 76000},
-            {"product_id": "P014", "product_name": "Noise Cancelling Headphones", "category": "Accessories", "brand": "Pulse", "list_price": 520000, "unit_cost": 265000},
-            {"product_id": "P015", "product_name": "Webcam HD", "category": "Accessories", "brand": "NovaTech", "list_price": 240000, "unit_cost": 97000},
-            {"product_id": "P016", "product_name": "Portable SSD 1TB", "category": "Accessories", "brand": "Orion", "list_price": 430000, "unit_cost": 220000},
-            {"product_id": "P017", "product_name": "Smart Speaker", "category": "Smart Home", "brand": "Pulse", "list_price": 350000, "unit_cost": 185000},
-            {"product_id": "P018", "product_name": "Smart Bulb Kit", "category": "Smart Home", "brand": "Vertex", "list_price": 180000, "unit_cost": 79000},
-            {"product_id": "P019", "product_name": "Security Camera", "category": "Smart Home", "brand": "Orion", "list_price": 460000, "unit_cost": 248000},
-            {"product_id": "P020", "product_name": "Smart Plug Pack", "category": "Smart Home", "brand": "NovaTech", "list_price": 160000, "unit_cost": 67000}
-          ],
-          "stores": [
-            {"store_id": "S01", "store_name": "Cali Centro", "city": "Cali", "region": "Southwest", "channel_id": "C01"},
-            {"store_id": "S02", "store_name": "Bogota Norte", "city": "Bogota", "region": "Central", "channel_id": "C01"},
-            {"store_id": "S03", "store_name": "Online Colombia", "city": "National", "region": "National", "channel_id": "C02"}
-          ],
-          "channels": [
-            {"channel_id": "C01", "channel_name": "Physical Store"},
-            {"channel_id": "C02", "channel_name": "Online"}
-          ],
-          "promotions": [
-            {"promotion_id": "PR00", "promotion_name": "No Promotion", "discount_pct": 0.0},
-            {"promotion_id": "PR10", "promotion_name": "Seasonal 10%", "discount_pct": 0.1},
-            {"promotion_id": "PR15", "promotion_name": "Online 15%", "discount_pct": 0.15},
-            {"promotion_id": "PR20", "promotion_name": "Clearance 20%", "discount_pct": 0.2}
-          ]
-        }
-        with open(json_path, "w", encoding="utf-8") as f:
-            json.dump(reference_data, f, indent=2, ensure_ascii=False)
-        print(f"[INFO] Archivo {json_path} generado localmente.")
+DB_PATH = "database/retail_dw.db"
+JSON_PATH = "data/reference_data.json"
+CSV_PATH = "data/sales_transactions.csv"
 
-def main():
-    DB_PATH = "sales_datamart.db"
-    JSON_PATH = "reference_data.json"
-    
+
+def main(): # Ejecuta el pipeline completo del Data Mart de ventas: crea el esquema, carga dimensiones y hechos, ejecuta consultas y genera visualizaciones.
     print("========================================================")
-    print("EJECUTANDO PIPELINE ETL CON ARCHIVO DE REFERENCIA")
+    print("EJECUTANDO PIPELINE COMPLETO DEL DATA MART DE VENTAS")
     print("========================================================")
-    
-    # 0. Asegurar que existe reference_data.json
-    ensure_reference_file(JSON_PATH)
-    
-    # 1. Crear Esquema
-    print("\nPaso 1: Creando esquema estelar...")
+
+    print("\nPaso 1: Creando esquema en estrella...")
     create_schema(DB_PATH)
-    
-    # 2. Cargar Dimensiones desde JSON
+
     print("\nPaso 2: Cargando dimensiones desde reference_data.json...")
-    load_all_dimensions(DB_PATH, JSON_PATH)
-    
-    # 3. Cargar Tabla de Hechos
-    print("\nPaso 3: Generando transacciones en fact_sales...")
-    load_fact_sales(DB_PATH, num_records=1500)
-    
-    # 4. Consultas Analíticas (R1 - R5)
-    print("\nPaso 4: Ejecutando consultas analíticas de negocio...")
+    load_all_dimensions(DB_PATH, JSON_PATH, CSV_PATH)
+
+    print("\nPaso 3: Cargando fact_sales desde sales_transactions.csv...")
+    load_fact_sales(DB_PATH, CSV_PATH)
+
+    print("\nPaso 4: Ejecutando consultas analiticas de negocio (R1-R5)...")
     run_queries(DB_PATH)
-    
+
+    print("\nPaso 5: Generando visualizaciones...")
+    generate_visualizations(DB_PATH)
+
     print("\n========================================================")
-    print("[COMPLETADO] El Data Mart ha sido poblado y consultado exitosamente.")
+    print("[COMPLETADO] El Data Mart ha sido creado, cargado y validado.")
     print("========================================================")
+
 
 if __name__ == "__main__":
     main()
