@@ -1,0 +1,15 @@
+# Entorno virtual
+.venv/
+
+# Bytecode de Python
+__pycache__/
+*.pyc
+
+# Base de datos generada (se recrea con create_schema.py)
+database/*.db
+
+# Jupyter
+.ipynb_checkpoints/
+
+# Sistema (macOS)
+.DS_Store
