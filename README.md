@@ -23,7 +23,7 @@ A retail technology company operates two physical stores and one national online
 
 **Business process:** Retail sales transactions.
 
-**Declared grain:** Each row in `fact_sales` represents one sales transaction, on a specific date, at a specific store, through a specific sales channel, for a specific product purchased under a specific promotion (including cases with no promotion applied).
+**Declared grain:** Each row in `fact_sales` represents one sales line, on a specific date, at a specific store, through a specific sales channel, for a specific product purchased under a specific promotion (including cases with no promotion applied).
 
 ## 5. Star Schema Diagram and Design Justification
 
@@ -43,7 +43,7 @@ A star schema was chosen because the declared grain of `fact_sales` (one row per
 | Dimension | Business Question Supported | Main Attributes |
 |---|---|---|
 | DimDate | What is the sales trend over time? | `date_id`, `year`, `month`, `day` |
-| DimStore | Which store generates the most sales? | `store_id`, `store_name`, `city`, `region`, `channel_id` |
+| DimStore | Which store generates the most sales? | `store_id`, `store_name`, `city`, `region` |
 | DimChannel | Which channel generates the most sales? | `channel_id`, `channel_name` |
 | DimProducts | Which products perform best? | `product_id`, `product_name`, `category`, `brand` |
 | DimPromotions | Which promotions do customers use the most? | `promotion_id`, `promotion_name`, `discount_pct` |
@@ -109,6 +109,6 @@ Las tendencias de ventas muestran que hubo un aumento constante dentro de los me
 
 ![Tendencias Mensuales](./docs/viz1_tendencia_ventas_mensuales.png)
 
-Las categorías que más venden son los computadores, la marca Pulse es la más representativa, seguida de Orion. La categoría que menos vende es Smart Home, la marca Vertex tiene menso desempeño en ventas. 
+Las categorías que más venden son Computers y Mobile Devices, siendo Computers la líder. Smart Home es la categoría con menor desempeño. La marca más representativa es NovaTech, liderando en Computers y Mobile Devices, aunque en Accessories y Smart Home es Orion quien toma el liderazgo.
 
 ![Ventas por Categoría](./docs/viz2_ventas_categoria_marca.png)
